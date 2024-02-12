@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gorilla/mux"
 )
@@ -14,7 +15,8 @@ const (
 )
 
 var (
-	domain string
+	domain     string
+	currentdir string
 )
 
 func main() {
@@ -26,6 +28,13 @@ func main() {
 	} else {
 		fmt.Println("usage: ", usage)
 		return
+	}
+
+	exe, err := os.Executable()
+	if err == nil {
+		currentdir = filepath.Dir(exe)
+	} else {
+		fmt.Println("unable to find exe path: ", err)
 	}
 
 	router := mux.NewRouter()
