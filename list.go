@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -36,7 +37,7 @@ func listContainersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("listContainers.html"))
+	tmpl := template.Must(template.ParseFiles(filepath.Join(currentdir, "listContainers.html")))
 	tmpl.Execute(w, containers)
 }
 
