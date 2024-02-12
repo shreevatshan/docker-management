@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"text/template"
 
 	"github.com/docker/docker/api/types/container"
@@ -13,7 +14,7 @@ import (
 func manageContainerPage(w http.ResponseWriter, r *http.Request) {
 	containerID := r.URL.Query().Get("id")
 
-	tmpl := template.Must(template.ParseFiles("manageContainer.html"))
+	tmpl := template.Must(template.ParseFiles(filepath.Join(currentdir, "manageContainer.html")))
 	tmpl.Execute(w, containerID)
 }
 
