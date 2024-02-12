@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Manage Docker Container</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            /* Green */
+            color: white;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .info-box {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+        }
+
+        .message-box {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        p {
+            color: #666;
+        }
+
+        .logs-section {
+            height: 400px;
+            /* Increased height */
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            border-top: 1px solid #ccc;
+            /* Added border */
+            margin-top: 10px;
+            /* Added margin */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="button-container">
+        <button onclick="manageContainer('start')">Start</button>
+        <button onclick="manageContainer('stop')">Stop</button>
+        <button onclick="manageContainer('pause')">Pause</button>
+        <button onclick="manageContainer('unpause')">Unpause</button>
+        <button onclick="manageContainer('restart')">Restart</button>
+    </div>
+
+    <div class="message-box" id="messageBox"></div>
+
+    <div id="loading" style="display: none;margin-top: 10px;">
+        <img src="/loading.gif" style="width:50px; height:50px;">
+    </div>
+
+    <div class="info-box" id="containerInfo">
+        <p id="containerId"></p>
+        <p id="containerStatus"></p>
+        <p id="containerCreated"></p>
+        <p id="containerPath"></p>
+        <p id="containerArgs"></p>
+        <button id="moreInfoButton" onclick="toggleMoreInfo()" disabled>More Info</button>
+        <pre id="moreInfo"></pre>
+    </div>
+
+    <div class="info-box logs-section" id="logsSection">
+        <div id="logs"></div>
+    </div>
+
+    <script>
+
+        function scrollToBottom(id) {
+            var element = document.getElementById(id);
+            element.scrollTop = element.scrollHeight;
+        }
+
+        var ws
+        function startWebSocket() {
+            // Close existing connection
+            stopWebSocket();
+
+            ws = new WebSocket('ws://localhost:9090/api/docker/container/logs?id={{.}}');
+
+            ws.onmessage = function (event) {
+                document.getElementById('logs').textContent += event.data + '\n';
+                scrollToBottom('logsSection');
+            };
+
+            ws.onerror = function (event) {
+                console.error('WebSocket error: ' + event);
+            };
+
+            ws.onclose = function (event) {
+                console.log('Connection is closed');
+            };
+        }
+
+        function stopWebSocket() {
+            if (ws != null) {
+                ws.close();
+            }
+        }
+
+        let info;
+
+        function manageContainer(operation) {
+            // Show loading spinner
+            document.getElementById('loading').style.display = 'block';
+
+            fetch(`/api/docker/container/manage?operation=${operation}&id={{.}}`)
+                .then(response => {
+                    // Hide loading spinner
+                    document.getElementById('loading').style.display = 'none';
+
+                    if (response.ok) {
+                        document.getElementById('messageBox').textContent = 'Operation ' + operation + ' was successful.';
+                        fetchContainerInfo();
+                    } else {
+                        response.text().then(text => {
+                            document.getElementById('messageBox').textContent = 'Operation failed: ' + text;
+                        });
+                    }
+
+                    startWebSocket();
+                })
+                .catch(error => {
+                    // Hide loading spinner in case of error
+                    document.getElementById('loading').style.display = 'none';
+                    console.error('Error:', error);
+                });
+        }
+
+        function fetchContainerInfo() {
+            fetch('/api/docker/container/inspect?id={{.}}')
+                .then(response => response.json())
+                .then(data => {
+                    info = data;
+                    document.getElementById('containerId').textContent = 'ID: ' + info.Id;
+                    document.getElementById('containerStatus').textContent = 'Status: ' + info.State.Status;
+                    document.getElementById('containerCreated').textContent = 'Created: ' + new Date(info.Created).toLocaleString();
+                    document.getElementById('containerPath').textContent = 'Path: ' + info.Path;
+                    document.getElementById('containerArgs').textContent = 'Args: ' + info.Args.join(', ');
+                    if (document.getElementById('moreInfo').style.display !== "none") {
+                        document.getElementById('moreInfo').textContent = JSON.stringify(info, null, 2);
+                    }
+                    // Enable the button here after fetching the data
+                    document.getElementById('moreInfoButton').disabled = false;
+                });
+        }
+
+
+        function toggleMoreInfo() {
+            const moreInfoDiv = document.getElementById('moreInfo');
+            // Always update the content of 'moreInfo' div
+            if (moreInfoDiv.style.display === "none") {
+                moreInfoDiv.textContent = JSON.stringify(info, null, 2);
+                moreInfoDiv.style.display = "block";
+            } else {
+                moreInfoDiv.style.display = "none";
+            }
+        }
+
+        // Fetch container info when page loads
+        // Set initial display style of 'moreInfo' to 'none'
+        window.onload = function () {
+            document.getElementById('moreInfo').style.display = "none";
+            fetchContainerInfo();
+            startWebSocket();
+        }
+
+    </script>
+</body>
+
+</html>
