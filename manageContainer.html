@@ -113,7 +113,10 @@
             // Close existing connection
             stopWebSocket();
 
-            ws = new WebSocket('ws://localhost:9090/api/docker/container/logs?id={{.}}');
+            // Get the current host and port
+            var host = window.location.hostname;
+            var port = window.location.port;
+            ws = new WebSocket(`ws://${host}:${port}/api/docker/container/logs?id={{.}}`);
 
             ws.onmessage = function (event) {
                 document.getElementById('logs').textContent += event.data + '\n';
